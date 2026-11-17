@@ -29,6 +29,9 @@
         justify-content: center;
         padding: 6px;
         overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
         background:
           radial-gradient(ellipse at 50% -10%, rgba(110, 82, 255, .28), transparent 55%),
           radial-gradient(ellipse at 110% 110%, rgba(0, 190, 255, .14), transparent 45%),
@@ -80,7 +83,7 @@
         border: 1px solid rgba(150, 165, 255, .2); border-radius: 14px; background: #04050d;
         box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .5), 0 0 30px rgba(95, 242, 255, .06);
       }
-      canvas { display: block; width: 100%; height: 100%; }
+      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
       /* Szklany połysk ekranu i pasek postępu do następnego poziomu. */
       .stage::after {
         content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
@@ -180,26 +183,19 @@
       .dr-wet-button.is-active { background: linear-gradient(135deg, #9bf5e6, #348ec5); box-shadow: 0 0 16px rgba(97, 217, 223, .4); }
       .gustav-status { color: #8f95b8; font-size: .6rem; line-height: 1.15; max-width: 92px; }
 
-      .touch-controls { display: none; gap: 6px; align-items: center; }
-      .touch-controls button {
-        width: 46px; padding: 0; border: 1px solid rgba(170, 182, 255, .22); background: linear-gradient(180deg, #343a6c, #1d2143);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 4px 10px rgba(0, 0, 0, .35); font-size: 1.1rem; touch-action: none;
-      }
-      .move-controls { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(2, 36px); gap: 3px; }
-      .move-controls button { width: 36px; min-height: 36px; border-radius: 9px; }
-      #upButton { grid-column: 2; grid-row: 1; }
-      #leftButton { grid-column: 1; grid-row: 2; }
-      #downButton { grid-column: 2; grid-row: 2; }
-      #rightButton { grid-column: 3; grid-row: 2; }
-      .touch-controls .fire-button { width: auto; min-width: 66px; min-height: 52px; padding: 0 10px; background: linear-gradient(135deg, #ff8f67, #e75066); font-size: .7rem; }
-      .touch-controls .spread-button { width: auto; min-width: 52px; min-height: 52px; padding: 0 8px; background: linear-gradient(135deg, #5bd8e8, #4579ec); font-size: .7rem; }
-      .touch-controls .rapid-touch-button { width: auto; min-width: 52px; min-height: 52px; padding: 0 8px; background: linear-gradient(135deg, #ffbb5e, #ed6b42); font-size: .7rem; }
+      /* Sterowanie dotykiem: bez strzałek — palec przesuwany po polu gry prowadzi BRUNA i włącza ogień. */
+      .touch-controls { display: none; align-items: center; }
+      .touch-tip { display: none; }
+      .spread-button { background: linear-gradient(135deg, #5bd8e8, #4579ec); touch-action: none; }
+      .is-touch .game { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+      .is-touch .touch-controls { display: flex; }
+      .is-touch .overlay .touch-tip { display: block; color: #9ff3ff; font-size: .84rem; font-weight: 650; }
+      .is-touch .hint, .is-touch .gustav-status { display: none; }
+      .is-touch .actions { justify-content: center; }
+      .is-touch .support-controls { width: 100%; justify-content: center; gap: 8px; }
+      .is-touch .support-controls button { min-height: 46px; padding: 0 14px; border-radius: 12px; font-size: .78rem; }
+      .is-touch .support-controls .spread-button { min-width: 104px; }
 
-      @media (pointer: coarse) {
-        .touch-controls { display: flex; }
-        .hint { display: none; }
-        .gustav-status { display: none; }
-      }
       @media (max-width: 640px) {
         body { padding: 0; }
         .game { border-radius: 0; border: 0; padding: 5px; gap: 5px; }
@@ -239,6 +235,7 @@
             <div class="logo" aria-hidden="true">BRUNO<small>&amp; Co.</small></div>
             <h2 id="headline">Ready for launch?</h2>
             <p id="message">BRUNO, a brave wire-haired dachshund, heads into the asteroid belt. Dodge obstacles and shoot to score points.</p>
+            <p class="touch-tip">Touch screen: drag your finger anywhere on the field to move BRUNO. He fires as long as you keep touching.</p>
             <button id="startButton" type="button">Start game</button>
           </div>
         </div>
@@ -264,15 +261,7 @@
             <span class="gustav-status" id="drWetStatus">Available from level 40</span>
           </div>
           <div class="touch-controls" aria-label="Touch controls">
-            <div class="move-controls" aria-label="Move Bruno">
-              <button id="upButton" type="button" aria-label="Forward">↑</button>
-              <button id="leftButton" type="button" aria-label="Left">←</button>
-              <button id="downButton" type="button" aria-label="Back">↓</button>
-              <button id="rightButton" type="button" aria-label="Right">→</button>
-            </div>
-            <button class="fire-button" id="fireButton" type="button" aria-label="Shoot">FIRE</button>
-            <button class="spread-button" id="spreadButton" type="button" aria-label="Spread shot">C ×3</button>
-            <button class="rapid-touch-button" id="rapidTouchButton" type="button" aria-label="Rapid fire">V POWER</button>
+            <button class="spread-button" id="spreadButton" type="button" aria-label="Hold for spread shot">×3 SPREAD</button>
           </div>
         </div>
       </footer>
@@ -296,7 +285,6 @@
         const gustavStatus = document.getElementById("gustavStatus");
         const rapidButton = document.getElementById("rapidButton");
         const rapidStatus = document.getElementById("rapidStatus");
-        const rapidTouchButton = document.getElementById("rapidTouchButton");
         const teamButton = document.getElementById("teamButton");
         const teamStatus = document.getElementById("teamStatus");
         const drWetButton = document.getElementById("drWetButton");
@@ -306,8 +294,10 @@
         let width = 0, height = 0, dpr = 1;
         let running = false, paused = false, lastTime = 0, elapsed = 0, spawnTimer = 0, enemySpawnTimer = 0, score = 0;
         let best = 0, meteors = [], enemies = [], cats = [], bullets = [], hostileShots = [], stars = [], keys = new Set();
-        const touchMove = { x: 0, y: 0 };
-        let fireHeld = false, spreadHeld = false, rapidHeld = false, shotCooldown = 0, spreadCooldown = 0, rapidCooldown = 0, gustavShotCooldown = 0, bonusScore = 0;
+        // Dotyk: identyfikator palca prowadzącego BRUNA i punkt, do którego BRUNO zmierza.
+        let dragPointerId = null, dragLastX = 0, dragLastY = 0;
+        const dragTarget = { x: 0, y: 0 };
+        let spreadHeld = false, rapidHeld = false, shotCooldown = 0, spreadCooldown = 0, rapidCooldown = 0, gustavShotCooldown = 0, bonusScore = 0;
         let lives = 3, invulnerability = 0;
         let musicEnabled = true, audioContext = null, musicBus = null, effectsBus = null, musicTimer = null, musicStep = 0;
         let secretCodeBuffer = "";
@@ -2238,7 +2228,7 @@
         function togglePause() {
           if (!running) return;
           paused = !paused;
-          keys.clear(); touchMove.x = 0; touchMove.y = 0;
+          keys.clear(); dragPointerId = null;
           overlay.hidden = !paused;
           if (paused) {
             headline.textContent = "Paused";
@@ -2258,6 +2248,7 @@
         function endGame() {
           running = false;
           paused = false;
+          dragPointerId = null;
           rapidHeld = false;
           updateGustavControl(Math.min(99, 1 + Math.floor(elapsed / 15)));
           stopMusic();
@@ -2287,6 +2278,7 @@
           }
           invulnerability = 2.1;
           player.x = width / 2;
+          dragTarget.x = player.x; dragTarget.y = player.y;
           if (gustavActive) {
             gustav.x = Math.max(25, player.x - 48);
             gustav.y = player.y + 4;
@@ -2506,13 +2498,22 @@
           updateGustavControl(level);
 
           let moveX = (keys.has("ArrowRight") ? 1 : 0)
-            - (keys.has("ArrowLeft") ? 1 : 0) + touchMove.x;
+            - (keys.has("ArrowLeft") ? 1 : 0);
           let moveY = (keys.has("ArrowDown") ? 1 : 0)
-            - (keys.has("ArrowUp") ? 1 : 0) + touchMove.y;
+            - (keys.has("ArrowUp") ? 1 : 0);
           const moveLength = Math.hypot(moveX, moveY);
           if (moveLength > 1) { moveX /= moveLength; moveY /= moveLength; }
           player.x = Math.max(24, Math.min(width - 24, player.x + moveX * player.speed * 1.18 * dt));
           player.y = Math.max(42, Math.min(height - 42, player.y + moveY * player.speed * 1.18 * dt));
+          if (dragPointerId !== null) {
+            // Dotyk: BRUNO podąża za ruchem palca, z ograniczeniem prędkości.
+            const dragX = dragTarget.x - player.x, dragY = dragTarget.y - player.y;
+            const dragDistance = Math.hypot(dragX, dragY), dragStep = player.speed * 2.6 * dt;
+            if (dragDistance <= dragStep) { player.x = dragTarget.x; player.y = dragTarget.y; }
+            else { player.x += dragX / dragDistance * dragStep; player.y += dragY / dragDistance * dragStep; }
+            player.x = Math.max(24, Math.min(width - 24, player.x));
+            player.y = Math.max(42, Math.min(height - 42, player.y));
+          }
           if (gustavActive) {
             const targetX = Math.max(25, Math.min(width - 25, player.x - 48));
             gustav.x += (targetX - gustav.x) * Math.min(1, dt * 7);
@@ -2570,7 +2571,7 @@
             }
           }
           shotCooldown -= dt;
-          if ((keys.has(" ") || fireHeld) && shotCooldown <= 0) {
+          if ((keys.has(" ") || dragPointerId !== null) && shotCooldown <= 0) {
             fire(level);
             shotCooldown = level >= 15 ? .14 : .19;
           }
@@ -2858,7 +2859,7 @@
           lastBaseLevel = 0; lastSuperBaseLevel = 0; lastSmallBaseLevel = 0; lastFlyWaveLevel = 0; lastCatLevel = 0;
           lastCrocodileLevel = 0; lastMonkeyLevel = 0; lastFoxLevel = 0; lastMonkeyBonusLevel = 0; lastCockroachWaveLevel = 0; lastAlienLevel = 0;
           lives = 3; invulnerability = 0; livesEl.textContent = "03";
-          paused = false; teamActive = false; teamUnlocked = false; maniekUnlocked = false; pabloUnlocked = false;
+          paused = false; dragPointerId = null; teamActive = false; teamUnlocked = false; maniekUnlocked = false; pabloUnlocked = false;
           drWetUnlocked = false; drWetActive = false; drWetShotCooldown = 0;
           gustavActive = false; gustavUnlocked = false; rapidUnlocked = false; rapidHeld = false; previousLevel = 1;
           vikaShotCooldown = 0; veraShotCooldown = .3; maniekShotCooldown = 0; pabloShotCooldown = 0;
@@ -3005,28 +3006,36 @@
           keys.add(event.key.length === 1 ? event.key.toLowerCase() : event.key);
         });
         window.addEventListener("keyup", (event) => { keys.delete(event.key); keys.delete(event.key.toLowerCase()); });
-        window.addEventListener("blur", () => { keys.clear(); touchMove.x = 0; touchMove.y = 0; fireHeld = false; spreadHeld = false; rapidHeld = false; });
+        window.addEventListener("blur", () => { keys.clear(); dragPointerId = null; spreadHeld = false; rapidHeld = false; });
 
-        function bindHold(buttonId, axis, direction) {
-          const button = document.getElementById(buttonId);
-          button.addEventListener("pointerdown", (event) => { event.preventDefault(); touchMove[axis] = direction; button.setPointerCapture(event.pointerId); });
-          for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-            button.addEventListener(eventName, () => { if (touchMove[axis] === direction) touchMove[axis] = 0; });
-          }
-        }
-        bindHold("leftButton", "x", -1);
-        bindHold("rightButton", "x", 1);
-        bindHold("upButton", "y", -1);
-        bindHold("downButton", "y", 1);
-        const fireButton = document.getElementById("fireButton");
-        fireButton.addEventListener("pointerdown", (event) => {
+        // Sterowanie dotykiem: palec przesuwany po polu gry prowadzi BRUNA, a sam dotyk włącza ogień ciągły.
+        const enableTouchUi = () => document.documentElement.classList.add("is-touch");
+        if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) enableTouchUi();
+        window.addEventListener("pointerdown", (event) => { if (event.pointerType !== "mouse") enableTouchUi(); }, { passive: true });
+        canvas.addEventListener("pointerdown", (event) => {
+          if (event.pointerType === "mouse" || !running || paused || dragPointerId !== null) return;
           event.preventDefault();
-          fireHeld = true;
-          fireButton.setPointerCapture(event.pointerId);
+          dragPointerId = event.pointerId;
+          dragLastX = event.clientX; dragLastY = event.clientY;
+          dragTarget.x = player.x; dragTarget.y = player.y;
+          try { canvas.setPointerCapture(event.pointerId); } catch (_) {}
+        });
+        canvas.addEventListener("pointermove", (event) => {
+          if (event.pointerId !== dragPointerId) return;
+          event.preventDefault();
+          // Na dużych ekranach (tablet) mały ruch kciuka przesuwa BRUNA nieco dalej.
+          const sensitivity = width > 700 ? 1.35 : 1.15;
+          dragTarget.x = Math.max(24, Math.min(width - 24, dragTarget.x + (event.clientX - dragLastX) * sensitivity));
+          dragTarget.y = Math.max(42, Math.min(height - 42, dragTarget.y + (event.clientY - dragLastY) * sensitivity));
+          dragLastX = event.clientX; dragLastY = event.clientY;
         });
         for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-          fireButton.addEventListener(eventName, () => { fireHeld = false; });
+          canvas.addEventListener(eventName, (event) => { if (event.pointerId === dragPointerId) dragPointerId = null; });
         }
+        // Telefon i tablet: bez przewijania strony, powiększania gestem i menu po długim dotyku w trakcie gry.
+        canvas.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
+        canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+        document.addEventListener("gesturestart", (event) => event.preventDefault());
         const spreadButton = document.getElementById("spreadButton");
         spreadButton.addEventListener("pointerdown", (event) => {
           event.preventDefault();
@@ -3036,16 +3045,6 @@
         for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
           spreadButton.addEventListener(eventName, () => { spreadHeld = false; });
         }
-        rapidTouchButton.addEventListener("pointerdown", (event) => {
-          event.preventDefault();
-          if (!rapidUnlocked) return;
-          rapidHeld = true;
-          rapidTouchButton.setPointerCapture(event.pointerId);
-        });
-        for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-          rapidTouchButton.addEventListener(eventName, () => { rapidHeld = false; });
-        }
-
         prebakeSprites();
         buildPlanet();
         buildOldBoot();
